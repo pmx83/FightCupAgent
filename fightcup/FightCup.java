@@ -15,6 +15,8 @@ import javax.swing.JFrame;
 public class FightCup {
     
     public static String AppName = "FightCup";
+    
+    
 
     /**
      * @param args the command line arguments

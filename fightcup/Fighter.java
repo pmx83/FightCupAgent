@@ -20,10 +20,12 @@ public class Fighter {
         WAITING_FOR_FIGHT
     }
     public enum Skill {
-        KICKING,
-        BOXING,
-        STRENGTH,
-        RUNNING_SPEED
+        ATACK_KICKING,
+        ATACK_BOXING,
+        ATACK_RUNNING_SPEED,
+        DEFENSE_KICKING,
+        DEFENSE_BOXING,
+        DEFENSE_RUNNING_SPEED
     }
     
     /**
@@ -39,15 +41,14 @@ public class Fighter {
     /**
      * Wartosci umiejetnosci dla ataku i obrony
      */
-    Map <Skill, Integer> atackSkill = new HashMap<>();
-    Map <Skill, Integer> defenseSkill = new HashMap<>();
+    Map <Skill, Integer> skills = new HashMap<>();
     
-    public void setAtackSkill(Skill skill, int value) {
-        atackSkill.put(skill, value);
+    public void setSkill(Skill skill, int value) {
+        skills.put(skill, value);
     }
     
-    public void setDefenseSkill(Skill skill, int value) {
-        defenseSkill.put(skill, value);
+    public int getSkill(Skill skill) {
+        return skills.get(skill);
     }
     
     /**
