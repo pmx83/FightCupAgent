@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import javax.swing.JSpinner;
+import javax.swing.table.DefaultTableModel;
 
 /**
  *
@@ -36,9 +37,8 @@ public class TeamParamsPanel extends javax.swing.JPanel {
     
     /**
      * model dla tabeli zawodnikow
-     * 
      */
-    Object[][] dataModel = {};
+    FightersTableModel tableModel = new FightersTableModel();
     
     public TeamParamsPanel(String title) { 
         setBorder(javax.swing.BorderFactory.createTitledBorder(
@@ -58,6 +58,7 @@ public class TeamParamsPanel extends javax.swing.JPanel {
         skillElementMap.put(Fighter.Skill.DEFENSE_BOXING, defenseBoxingSpinner);
         skillElementMap.put(Fighter.Skill.DEFENSE_KICKING, defenseKickingSpinner);
         skillElementMap.put(Fighter.Skill.DEFENSE_RUNNING_SPEED, defenseRunningSpinner);
+        
     }
         
     private void randomSkills() {
@@ -122,12 +123,7 @@ public class TeamParamsPanel extends javax.swing.JPanel {
             }
         });
 
-        fightersList.setModel(new javax.swing.table.DefaultTableModel(
-            dataModel,
-            new String [] {
-                "#", "Boxing", "Kicking", "Running"
-            }
-        ));
+        fightersList.setModel(this.tableModel);
         jScrollPane2.setViewportView(fightersList);
 
         jButton2.setText("Add");
@@ -218,24 +214,28 @@ public class TeamParamsPanel extends javax.swing.JPanel {
             fighter.setSkill(skill, Integer.parseInt(spinner.getValue().toString()));
         }
         teamFighters.add(fighter);
+        updateFightersListModel();
+        randomSkills();
     }//GEN-LAST:event_jButton2MouseClicked
 
     private void updateFightersListModel() {
+        tableModel.setRowCount(0);
+        String[] data = new String[4];
         int i = 1;
-        dataModel = new Object[teamFighters.size()][4];
         for (Fighter fighter : teamFighters) {
-            dataModel[i][0] = String.valueOf(i));
-            dataModel[i][1] = String.format("%s/%s", 
+            data[0] = String.valueOf(i++);
+            data[1] = String.format("%s/%s", 
                     fighter.getSkill(Fighter.Skill.ATACK_BOXING),
                     fighter.getSkill(Fighter.Skill.DEFENSE_BOXING));
-            dataModel[i][2] = String.format("%s/%s", 
+            data[2] = String.format("%s/%s", 
                     fighter.getSkill(Fighter.Skill.ATACK_KICKING),
                     fighter.getSkill(Fighter.Skill.DEFENSE_KICKING));
-            dataModel[i][3] = String.format("%s/%s", 
+            data[3] = String.format("%s/%s", 
                     fighter.getSkill(Fighter.Skill.ATACK_RUNNING_SPEED),
                     fighter.getSkill(Fighter.Skill.DEFENSE_RUNNING_SPEED));
-        }
-        fightersList.updateUI();
+            tableModel.addRow(data);
+        }        
+        tableModel.fireTableDataChanged();
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -253,8 +253,14 @@ public class TeamParamsPanel extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     // End of variables declaration//GEN-END:variables
 }
 
+class FightersTableModel extends DefaultTableModel {
+    public FightersTableModel() {
+        super(new Object[][] {}, new String [] {
+                "#", "Boxing", "Kicking", "Running"
+              });
+    }
+}
