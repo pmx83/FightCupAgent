@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-package fightcup;
+package fightcup.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -18,6 +18,7 @@ public class ParamsForm extends JFrame {
     
     TeamParamsPanel teamPanelA = new TeamParamsPanel("Team A");
     TeamParamsPanel teamPanelB = new TeamParamsPanel("Team B");
+    StartFightPanel startPanel = new StartFightPanel();
     
     public ParamsForm() {
         super();
@@ -30,5 +31,6 @@ public class ParamsForm extends JFrame {
         
         pane.add(teamPanelA, BorderLayout.WEST);
         pane.add(teamPanelB, BorderLayout.EAST);
+        pane.add(startPanel, BorderLayout.SOUTH);
     }
 }

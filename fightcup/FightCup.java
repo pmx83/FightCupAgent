@@ -5,6 +5,7 @@
  */
 package fightcup;
 
+import fightcup.gui.ParamsForm;
 import java.awt.EventQueue;
 import javax.swing.JFrame;
 

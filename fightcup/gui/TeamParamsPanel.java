@@ -4,8 +4,9 @@
  * and open the template in the editor.
  */
 
-package fightcup;
+package fightcup.gui;
 
+import fightcup.Fighter;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
