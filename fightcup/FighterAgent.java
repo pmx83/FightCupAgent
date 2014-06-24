@@ -58,6 +58,10 @@ public class FighterAgent extends Agent {
         return skills.get(skill);
     }
     
+    public void setMode(Mode m) {
+        mode = m;
+    }
+    
     /**
      * Cios wymierzony przez przeciwnika
      * 

@@ -101,8 +101,16 @@ public class FighterAgentGui extends JFrame {
         defenseRunningSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
         
         generateRandomButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jButton1MouseClicked(evt);
+                generateRandomButtonMouseClicked(evt);
+            }
+        });
+        
+        startFightButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                startFightButtonMouseClicked(evt);
             }
         });
         
@@ -135,9 +143,13 @@ public class FighterAgentGui extends JFrame {
 
     }                  
 
-    private void jButton1MouseClicked(java.awt.event.MouseEvent evt) {                                      
+    private void generateRandomButtonMouseClicked(java.awt.event.MouseEvent evt) {                                      
         randomSkills();
-    }                                     
+    }  
+    
+    private void startFightButtonMouseClicked(java.awt.event.MouseEvent evt) {                                      
+        agent.setMode(FighterAgent.Mode.FIGHTING);
+    }
 
     public void showGui() {
         pack();
