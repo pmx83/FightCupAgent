@@ -138,7 +138,7 @@ public class FighterAgentGui extends JFrame {
     }  
     
     private void startFightButtonMouseClicked(java.awt.event.MouseEvent evt) {                                      
-        agent.setMode(FighterAgent.Mode.FIGHTING);
+        agent.setMode(FighterAgent.Mode.SEARCHING_OPONENTS);
     }
 
     public void showGui() {
