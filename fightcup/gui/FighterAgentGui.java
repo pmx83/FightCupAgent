@@ -28,12 +28,6 @@ import javax.swing.JSpinner;
  */
 public class FighterAgentGui extends JFrame {
 
-    enum SkillMode {
-
-        ATACK,
-        DEFENSE
-    };
-    
     javax.swing.JSpinner atackBoxingSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner atackKickingSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner atackRunningSpinner = new javax.swing.JSpinner();
@@ -47,18 +41,14 @@ public class FighterAgentGui extends JFrame {
     FighterAgent agent;
 
     /**
-     * lista zawodnikow
-     */
-    List<FighterAgent> teamFighters = new ArrayList<>();
-
-    /**
      * Mapa element formularza - skill
      */
     Map<FighterAgent.Skill, JSpinner> skillElementMap = new HashMap<>();
 
     public FighterAgentGui(FighterAgent a) {
-        super(a.getLocalName());
+        super();
         agent = a;
+        
         initComponents();
 
         // wypelnienie mapy        

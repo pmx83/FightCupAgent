@@ -69,6 +69,10 @@ public class FighterAgent extends Agent {
      * @param blowStrength 
      */
     public void blowFromOponent(Skill oponentSkill, int blowStrength) {
+        // fighter nigdy nie jest ciamajda, jak dostaje cios zaraz zaczyna walke
+        if (mode == Mode.WAITING_FOR_FIGHT) {
+            setMode(Mode.FIGHTING);
+        }
         
     }
     
@@ -82,7 +86,16 @@ public class FighterAgent extends Agent {
     @Override
     protected void setup() {
         gui = new FighterAgentGui(this);
-        gui.showGui();
+        Object[] args = this.getArguments();
+        if (args != null && args.length > 0) {
+            String team = String.valueOf(args[0]);
+            gui.setTitle(this.getLocalName() + " from team: " + team);
+            gui.showGui();
+        }
+        else {
+            System.err.println("Podaj druzyne dla agenta (pierwszy parametr)");
+            this.doDelete();
+        } 
     }
     
             
