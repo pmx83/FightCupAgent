@@ -6,6 +6,8 @@
 
 package fightcup;
 
+import fightcup.gui.FighterAgentGui;
+import jade.core.Agent;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,7 +15,7 @@ import java.util.Map;
  *
  * @author Przemo
  */
-public class Fighter {
+public class FighterAgent extends Agent {
     public enum Mode {
         FIGHTING,
         RUNING_AWAY,
@@ -27,6 +29,11 @@ public class Fighter {
         DEFENSE_BOXING,
         DEFENSE_RUNNING_SPEED
     }
+    
+    /**
+     * GUI
+     */
+    FighterAgentGui gui;
     
     /**
      * Zdrowie zawodnika, inicjalnie 100%
@@ -67,5 +74,12 @@ public class Fighter {
             mode = Mode.RUNING_AWAY;
         }
     }
+    
+    @Override
+    protected void setup() {
+        gui = new FighterAgentGui(this);
+        gui.showGui();
+    }
+    
             
 }

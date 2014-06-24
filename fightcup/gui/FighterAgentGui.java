@@ -3,71 +3,74 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package fightcup.gui;
 
-import fightcup.Fighter;
+import fightcup.FighterAgent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import javax.swing.JFrame;
 import javax.swing.JSpinner;
-import javax.swing.table.DefaultTableModel;
 
 /**
  *
  * @author Przemo
  */
-public class TeamParamsPanel extends javax.swing.JPanel {
+public class FighterAgentGui extends JFrame {
 
     enum SkillMode {
+
         ATACK,
         DEFENSE
     };
-    
+
+    FighterAgent agent;
+
     /**
-     * lista zawodnikow 
+     * lista zawodnikow
      */
-    List<Fighter> teamFighters = new ArrayList<>();
-    
+    List<FighterAgent> teamFighters = new ArrayList<>();
+
     /**
      * Mapa element formularza - skill
      */
-    Map<Fighter.Skill, JSpinner> skillElementMap = new HashMap<>();
-    
-    /**
-     * model dla tabeli zawodnikow
-     */
-    FightersTableModel tableModel = new FightersTableModel();
-    
-    public TeamParamsPanel(String title) { 
-        setBorder(javax.swing.BorderFactory.createTitledBorder(
-                null, 
-                title, 
-                javax.swing.border.TitledBorder.CENTER, 
-                javax.swing.border.TitledBorder.DEFAULT_POSITION, 
-                new java.awt.Font("Calibri", 0, 18), 
-                new java.awt.Color(102, 102, 102))); 
-        initComponents();          
-        
+    Map<FighterAgent.Skill, JSpinner> skillElementMap = new HashMap<>();
+
+    public FighterAgentGui(FighterAgent a) {
+        super(a.getLocalName());
+        agent = a;
+        initComponents();
+
         // wypelnienie mapy        
-        skillElementMap.put(Fighter.Skill.ATACK_BOXING, atackBoxingSpinner);
-        skillElementMap.put(Fighter.Skill.ATACK_KICKING, atackKickingSpinner);
-        skillElementMap.put(Fighter.Skill.ATACK_RUNNING_SPEED, atackRunningSpinner);
-        
-        skillElementMap.put(Fighter.Skill.DEFENSE_BOXING, defenseBoxingSpinner);
-        skillElementMap.put(Fighter.Skill.DEFENSE_KICKING, defenseKickingSpinner);
-        skillElementMap.put(Fighter.Skill.DEFENSE_RUNNING_SPEED, defenseRunningSpinner);
-        
+        skillElementMap.put(FighterAgent.Skill.ATACK_BOXING, atackBoxingSpinner);
+        skillElementMap.put(FighterAgent.Skill.ATACK_KICKING, atackKickingSpinner);
+        skillElementMap.put(FighterAgent.Skill.ATACK_RUNNING_SPEED, atackRunningSpinner);
+
+        skillElementMap.put(FighterAgent.Skill.DEFENSE_BOXING, defenseBoxingSpinner);
+        skillElementMap.put(FighterAgent.Skill.DEFENSE_KICKING, defenseKickingSpinner);
+        skillElementMap.put(FighterAgent.Skill.DEFENSE_RUNNING_SPEED, defenseRunningSpinner);
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                agent.doDelete();
+            }
+        });
+
+        setResizable(false);
+
     }
-        
+
     private void randomSkills() {
-        Random generator = new Random();        
+        Random generator = new Random();
         for (JSpinner spinner : skillElementMap.values()) {
             int value = generator.nextInt(10);
             spinner.setValue(value);
-        }        
+        }
     }
 
     /**
@@ -91,9 +94,6 @@ public class TeamParamsPanel extends javax.swing.JPanel {
         jLabel2 = new javax.swing.JLabel();
         jLabel1 = new javax.swing.JLabel();
         jButton1 = new javax.swing.JButton();
-        jScrollPane2 = new javax.swing.JScrollPane();
-        fightersList = new javax.swing.JTable();
-        jButton2 = new javax.swing.JButton();
 
         jLabel3.setText("Boxing");
 
@@ -124,16 +124,6 @@ public class TeamParamsPanel extends javax.swing.JPanel {
             }
         });
 
-        fightersList.setModel(this.tableModel);
-        jScrollPane2.setViewportView(fightersList);
-
-        jButton2.setText("Add");
-        jButton2.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jButton2MouseClicked(evt);
-            }
-        });
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -160,15 +150,8 @@ public class TeamParamsPanel extends javax.swing.JPanel {
                                 .addComponent(defenseBoxingSpinner)
                                 .addComponent(defenseKickingSpinner)
                                 .addComponent(defenseRunningSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jButton1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton2)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                    .addComponent(jButton1))
+                .addContainerGap(22, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -193,11 +176,7 @@ public class TeamParamsPanel extends javax.swing.JPanel {
                     .addComponent(jLabel5)
                     .addComponent(defenseRunningSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton1)
-                    .addComponent(jButton2))
-                .addGap(18, 18, 18)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jButton1)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -208,35 +187,9 @@ public class TeamParamsPanel extends javax.swing.JPanel {
         randomSkills();
     }//GEN-LAST:event_jButton1MouseClicked
 
-    private void jButton2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton2MouseClicked
-        Fighter fighter = new Fighter();
-        for (Fighter.Skill skill : skillElementMap.keySet()) {
-            JSpinner spinner = skillElementMap.get(skill);
-            fighter.setSkill(skill, Integer.parseInt(spinner.getValue().toString()));
-        }
-        teamFighters.add(fighter);
-        updateFightersListModel();
-        randomSkills();
-    }//GEN-LAST:event_jButton2MouseClicked
-
-    private void updateFightersListModel() {
-        tableModel.setRowCount(0);
-        String[] data = new String[4];
-        int i = 1;
-        for (Fighter fighter : teamFighters) {
-            data[0] = String.valueOf(i++);
-            data[1] = String.format("%s/%s", 
-                    fighter.getSkill(Fighter.Skill.ATACK_BOXING),
-                    fighter.getSkill(Fighter.Skill.DEFENSE_BOXING));
-            data[2] = String.format("%s/%s", 
-                    fighter.getSkill(Fighter.Skill.ATACK_KICKING),
-                    fighter.getSkill(Fighter.Skill.DEFENSE_KICKING));
-            data[3] = String.format("%s/%s", 
-                    fighter.getSkill(Fighter.Skill.ATACK_RUNNING_SPEED),
-                    fighter.getSkill(Fighter.Skill.DEFENSE_RUNNING_SPEED));
-            tableModel.addRow(data);
-        }        
-        tableModel.fireTableDataChanged();
+    public void showGui() {
+        pack();
+        super.setVisible(true);
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -246,22 +199,11 @@ public class TeamParamsPanel extends javax.swing.JPanel {
     private javax.swing.JSpinner defenseBoxingSpinner;
     private javax.swing.JSpinner defenseKickingSpinner;
     private javax.swing.JSpinner defenseRunningSpinner;
-    private javax.swing.JTable fightersList;
     private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JScrollPane jScrollPane2;
     // End of variables declaration//GEN-END:variables
-}
-
-class FightersTableModel extends DefaultTableModel {
-    public FightersTableModel() {
-        super(new Object[][] {}, new String [] {
-                "#", "Boxing", "Kicking", "Running"
-              });
-    }
 }
