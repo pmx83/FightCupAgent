@@ -247,7 +247,7 @@ public class FighterAgent extends Agent {
                     if (reply != null) {
                         replyCounter++;
                         // zgoda na propozycje walki
-                        if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+                        if (mode == Mode.WAITING_FOR_FIGHT && reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
                             System.out.println(reply.getSender().getLocalName() + " zgodzil sie na walke");
                             fighters.add(reply.getSender());
                         }
