@@ -11,8 +11,6 @@ import java.awt.Container;
 import java.awt.GridLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -21,6 +19,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 /**
  *
@@ -31,13 +31,13 @@ public class FighterAgentGui extends JFrame {
     javax.swing.JSpinner atackBoxingSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner atackKickingSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner atackRunningSpinner = new javax.swing.JSpinner();
+    javax.swing.JSpinner atackSpeedSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner defenseBoxingSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner defenseKickingSpinner = new javax.swing.JSpinner();
     javax.swing.JSpinner defenseRunningSpinner = new javax.swing.JSpinner();
     javax.swing.JButton generateRandomButton = new JButton("Random values");
     javax.swing.JButton startFightButton = new JButton("Fight !");
-    
-    
+
     FighterAgent agent;
 
     /**
@@ -48,17 +48,28 @@ public class FighterAgentGui extends JFrame {
     public FighterAgentGui(FighterAgent a) {
         super();
         agent = a;
-        
+
         initComponents();
 
         // wypelnienie mapy        
         skillElementMap.put(FighterAgent.Skill.ATACK_BOXING, atackBoxingSpinner);
         skillElementMap.put(FighterAgent.Skill.ATACK_KICKING, atackKickingSpinner);
         skillElementMap.put(FighterAgent.Skill.ATACK_RUNNING_SPEED, atackRunningSpinner);
+        skillElementMap.put(FighterAgent.Skill.ATACK_SPEED, atackSpeedSpinner);
 
         skillElementMap.put(FighterAgent.Skill.DEFENSE_BOXING, defenseBoxingSpinner);
         skillElementMap.put(FighterAgent.Skill.DEFENSE_KICKING, defenseKickingSpinner);
         skillElementMap.put(FighterAgent.Skill.DEFENSE_RUNNING_SPEED, defenseRunningSpinner);
+
+        for (JSpinner spinner : skillElementMap.values()) {
+            spinner.addChangeListener(new ChangeListener() {
+
+                @Override
+                public void stateChanged(ChangeEvent ce) {
+                    skillSpinnerHasChanged((JSpinner) ce.getSource());
+                }
+            });
+        }
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -68,7 +79,7 @@ public class FighterAgentGui extends JFrame {
         });
 
         setResizable(false);
-
+        randomSkills();
     }
 
     private void randomSkills() {
@@ -79,71 +90,85 @@ public class FighterAgentGui extends JFrame {
         }
     }
 
-    @SuppressWarnings("unchecked")    
+    @SuppressWarnings("unchecked")
     private void initComponents() {
-        
+
         atackBoxingSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
         atackKickingSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
         atackRunningSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
-        
+        atackSpeedSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
+
         defenseBoxingSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
         defenseKickingSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
         defenseRunningSpinner.setModel(new javax.swing.SpinnerNumberModel(0, 0, 10, 1));
-        
+
         generateRandomButton.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 generateRandomButtonMouseClicked(evt);
             }
         });
-        
+
         startFightButton.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 startFightButtonMouseClicked(evt);
             }
         });
-        
+
         Container pane = this.getContentPane();
         JPanel grid = new JPanel();
-        grid.setLayout(new GridLayout(0,3));
-        
+        grid.setLayout(new GridLayout(0, 3));
+
         JPanel controls = new JPanel();
         pane.add(grid, BorderLayout.CENTER);
         pane.add(controls, BorderLayout.SOUTH);
- 
-        grid.add(new JLabel("Skill"));  
-        grid.add(new JLabel("ATACK")); 
-        grid.add(new JLabel("DEFENSE")); 
-        
-        grid.add(new JLabel("Boxing")); 
-        grid.add(atackBoxingSpinner); 
-        grid.add(defenseBoxingSpinner); 
-        
-        grid.add(new JLabel("Kicking")); 
-        grid.add(atackKickingSpinner); 
-        grid.add(defenseKickingSpinner); 
-        
-        grid.add(new JLabel("Running speed")); 
-        grid.add(atackRunningSpinner); 
-        grid.add(defenseRunningSpinner); 
-        
-        controls.add(generateRandomButton); 
-        controls.add(startFightButton); 
 
-    }                  
+        grid.add(new JLabel("Skill"));
+        grid.add(new JLabel("ATACK"));
+        grid.add(new JLabel("DEFENSE"));
 
-    private void generateRandomButtonMouseClicked(java.awt.event.MouseEvent evt) {                                      
+        grid.add(new JLabel("Boxing"));
+        grid.add(atackBoxingSpinner);
+        grid.add(defenseBoxingSpinner);
+
+        grid.add(new JLabel("Kicking"));
+        grid.add(atackKickingSpinner);
+        grid.add(defenseKickingSpinner);
+
+        grid.add(new JLabel("Running speed"));
+        grid.add(atackRunningSpinner);
+        grid.add(defenseRunningSpinner);
+
+        grid.add(new JLabel("Speed"));
+        grid.add(atackSpeedSpinner);
+        grid.add(new JLabel(""));
+
+        controls.add(generateRandomButton);
+        controls.add(startFightButton);
+
+    }
+
+    private void skillSpinnerHasChanged(JSpinner sender) {
+        for (FighterAgent.Skill skill : skillElementMap.keySet()) {
+            if (skillElementMap.get(skill).equals(sender)) {
+                agent.setSkill(skill, (int)sender.getValue());
+                break;
+            }
+        }
+    }
+
+    private void generateRandomButtonMouseClicked(java.awt.event.MouseEvent evt) {
         randomSkills();
-    }  
-    
-    private void startFightButtonMouseClicked(java.awt.event.MouseEvent evt) {                                      
-        agent.setMode(FighterAgent.Mode.SEARCHING_OPONENTS);
+    }
+
+    private void startFightButtonMouseClicked(java.awt.event.MouseEvent evt) {
+        agent.findSomeoneToFight();
     }
 
     public void showGui() {
         pack();
         super.setVisible(true);
     }
-             
+
 }

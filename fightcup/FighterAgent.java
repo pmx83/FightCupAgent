@@ -10,6 +10,7 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -17,7 +18,10 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import jade.lang.acl.UnreadableException;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,10 +46,13 @@ public class FighterAgent extends Agent {
         ATACK_KICKING,
         ATACK_BOXING,
         ATACK_RUNNING_SPEED,
+        ATACK_SPEED,
         DEFENSE_KICKING,
         DEFENSE_BOXING,
         DEFENSE_RUNNING_SPEED
     }
+    
+    Random randomizer = new Random();
 
     /**
      * Przeciwnik
@@ -92,24 +99,74 @@ public class FighterAgent extends Agent {
     }
 
     /**
+     * Szuka chetnego do walki
+     */
+    public void findSomeoneToFight() {
+        setMode(Mode.SEARCHING_OPONENTS);
+        /**
+         * Szukamy agentow z usluga walki
+         */
+        System.out.println(getLocalName() + " searching for oponents");
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("fighter");
+        template.addServices(sd);
+        // szukamy agentow do walki
+        try {
+            DFAgentDescription[] result = DFService.search(this, template);
+            if (result.length > 0) {
+                System.out.println(getLocalName() + " founds the following potential oponents");
+                List<AID> oponentsAgents = new ArrayList<>();
+                for (DFAgentDescription result1 : result) {
+                    // bez sensu walczyc z samym soba 
+                    if (!result1.getName().equals(FighterAgent.this.getAID())) {
+                        oponentsAgents.add(result1.getName());
+                        System.out.println(result1.getName());
+                    }
+                }
+                // pytamy czy chca walczyc
+                addBehaviour(new FightRequestPerformer(oponentsAgents));
+            } else {
+                System.out.println(getLocalName() + " there was no oponents to fight");
+            }
+
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+    }
+
+    /**
      * Cios wymierzony przez przeciwnika
      *
      * @param oponentSkill
      * @param blowStrength
      */
-    public void blowFromOponent(Skill oponentSkill, int blowStrength) {
+    public void blowFromOponent(Skill oponentSkill, int blowStrength, AID oponent) {
         // fighter nigdy nie jest ciamajda, jak dostaje cios zaraz zaczyna walke
         if (mode == Mode.WAITING_FOR_FIGHT) {
-            setMode(Mode.FIGHTING);
+            // odbija atak
+            startAtack(oponent);
         }
 
     }
-
+    
     private void updateHealth(int value) {
         health += value;
         if (health < 50) {
             mode = Mode.RUNING_AWAY;
         }
+    }
+
+    /**
+     * Rozpoczyna atak na przeciwnika
+     * @param oponent 
+     */
+    private void startAtack(AID oponent) {
+        setMode(Mode.FIGHTING);
+        // Czestotliwosc ataku uzalezniona od skilla ATACK_SPEED max 10, im wiecej tym lepiej
+        int speed = 11 - getSkill(Skill.ATACK_SPEED);
+        
+        addBehaviour(new AtackPerformer(this, speed * 1000, oponent));
     }
 
     @Override
@@ -122,27 +179,34 @@ public class FighterAgent extends Agent {
             gui.setTitle(this.getLocalName() + " from team: " + team + "/" + group);
             gui.showGui();
 
-            /**
-             * Szukamy przeciwanikow
-             */
-            addBehaviour(new FindOponentBevavior(this, 1000));
-
-            /**
-             * rejestracja uslugi odpowiedzi na pytanie (cfp) czy walczymy
-             */
             DFAgentDescription dfd = new DFAgentDescription();
             dfd.setName(getAID());
-            ServiceDescription sd = new ServiceDescription();
-            sd.setType("ready-to-fight");
-            sd.setName("JADE-ready-to-fight");
-            dfd.addServices(sd);
+            // rejestracja agenta jako fightera
+            ServiceDescription sdFighter = new ServiceDescription();
+            sdFighter.setType("fighter");
+            sdFighter.setName("JADE-fighter");
+            dfd.addServices(sdFighter);
+            // rejestracja uslugi wymiany ciosow
+            ServiceDescription sdBlow = new ServiceDescription();
+            sdBlow.setType("blow");
+            sdBlow.setName("JADE-blow");
+            dfd.addServices(sdBlow);
+
             try {
                 DFService.register(this, dfd);
             } catch (FIPAException fe) {
                 fe.printStackTrace();
             }
 
-            addBehaviour(new FightRequestsServer());
+            /**
+             * Odpowiedz na propozycje walki
+             */
+            addBehaviour(new FightRequestService());
+            
+            /**
+             * Odpowiedz na atak przeciwnika
+             */
+            addBehaviour(new AtackReceiveService());
 
         } else {
             System.err.println("Podaj druzyne i grupe dla agenta");
@@ -150,125 +214,148 @@ public class FighterAgent extends Agent {
         }
     }
 
-    /**
-     * Szuka oponentow do walki
-     */
-    private class FindOponentBevavior extends TickerBehaviour {
+    private class FightRequestPerformer extends CyclicBehaviour {
 
-        public FindOponentBevavior(Agent a, long period) {
-            super(a, period);
+        List<AID> oponentsAgents;
+        List<AID> fighters = new ArrayList<>();
+        int step = 0;
+        int replyCounter = 0;
+        MessageTemplate mt;
+
+        public FightRequestPerformer(List<AID> oponents) {
+            oponentsAgents = oponents;
         }
 
         @Override
-        protected void onTick() {
-            /**
-             * Jesli zawodnik jest w trybie szukania przeciwnika odpytuje
-             * kazdego agenta czy chce walczyc
-             */
-            if (mode == Mode.SEARCHING_OPONENTS) {
-                System.out.println(getLocalName() + " searching for oponents");
-                DFAgentDescription template = new DFAgentDescription();
-                ServiceDescription sd = new ServiceDescription();
-                sd.setType("ready-to-fight");
-                template.addServices(sd);
-                // szukamy agentow do walki
-                try {
-                    DFAgentDescription[] result = DFService.search(myAgent, template);
-                    if (result.length > 0) {
-                        System.out.println(getLocalName() + " founds the following potential oponents");
-                        List<AID> oponentsAgents = new ArrayList<>();
-                        for (int i = 0; i < result.length; i++) {
-                            // bez sensu walczyc z samym soba samego siebie
-                            if (!result[i].getName().equals(FighterAgent.this.getAID())) {
-                                oponentsAgents.add(result[i].getName());
-                                System.out.println(result[i].getName());
-                            }
-                        }
-                        // pytamy czy chca walczyc
-                        myAgent.addBehaviour(new FightRequestPerformer(oponentsAgents));
-                    } else {
-                        System.out.println(getLocalName() + " there was no oponents to fight");
+        public void action() {
+            switch (step) {
+                case 0:
+                    ACLMessage msg = new ACLMessage(ACLMessage.PROPOSE);
+                    msg.setConversationId("fighter");
+                    msg.setContent(team);
+                    msg.setReplyWith("fighter" + System.currentTimeMillis()); //unikalna wartosc
+                    for (AID agent : oponentsAgents) {
+                        msg.addReceiver(agent);
                     }
+                    send(msg);
+                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("fighter"),
+                            MessageTemplate.MatchInReplyTo(msg.getReplyWith()));
+                    step = 1;
+                    break;
+                case 1:
+                    ACLMessage reply = myAgent.receive(mt);
+                    if (reply != null) {
+                        replyCounter++;
+                        // zgoda na propozycje walki
+                        if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+                            System.out.println(reply.getSender().getLocalName() + " zgodzil sie na walke");
+                            fighters.add(reply.getSender());
+                        }
+                        if (replyCounter == oponentsAgents.size()) {
+                            // otrzymano wszystkie odpowiedzi losujemy przeciwnika
+                            AID oponent = fighters.get(randomizer.nextInt(fighters.size() - 1));
+                            System.out.println(myAgent.getLocalName() + " vs. " + oponent.getLocalName());
+                            startAtack(oponent);
 
-                } catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
-                setMode(Mode.WAITING_FOR_FIGHT);
+                            step = 2;
+                        }
+                    } else {
+                        block();
+                    }
+                    break;
             }
-        }
-    }
-
-    /**
-     * Rozglaszanie checi walki przeciwnika
-     */
-    private class FightRequestPerformer extends Behaviour {
-
-        List<AID> oponents;
-        
-        public FightRequestPerformer(List<AID> ad) {
-            oponents = ad;
-        }
-
-        @Override
-        public void action() {
-            ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-            for (AID agentAID : oponents) {
-                cfp.addReceiver(agentAID);
-            }
-            // informujemy z jakiej druzyny jestesmy, szukamy gotowych do walki
-            cfp.setContent(team);
-            cfp.setConversationId("do-you-want-to-fight");
-            cfp.setReplyWith("cfp" + System.currentTimeMillis()); //unikalna wartosc
-            myAgent.send(cfp);
-        }
-
-        @Override
-        public boolean done() {
-            return true;
-            //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
     }
 
-    /**
-     * Odpowiedz na zaproszenie do walki
-     */
-    private class FightRequestsServer extends CyclicBehaviour {
+    private class FightRequestService extends CyclicBehaviour {
 
         @Override
         public void action() {
-            //tylko zawodnicy chcacy walczyc
-            MessageTemplate mtCfp = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CFP),
-                    MessageTemplate.MatchConversationId("do-you-want-to-fight"));
-            ACLMessage msgCfp = myAgent.receive(mtCfp);
-            
-            MessageTemplate mtPropose = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.PROPOSE),
-                    MessageTemplate.MatchConversationId("do-you-want-to-fight"));
-            ACLMessage msgPropose = myAgent.receive(mtPropose);
-            
-            
-            if (msgCfp != null) {
-                String team = msgCfp.getContent();
-                ACLMessage reply = msgCfp.createReply();
-                reply.setConversationId("do-you-want-to-fight");
-                // zawodnicy czekajacy na walke i z innej druzyny
-                if (mode == Mode.WAITING_FOR_FIGHT && !FighterAgent.this.team.equals(team)) {
-                    // zawodnik startuje do walki
-                    reply.setPerformative(ACLMessage.PROPOSE);
-                    reply.setContent(FighterAgent.this.team);
+            // tylko propozycje walki
+            MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchConversationId("fighter"),
+                    MessageTemplate.MatchPerformative(ACLMessage.PROPOSE));
+
+            ACLMessage msg = myAgent.receive(mt);
+            if (msg != null) {
+                String oponentTeam = msg.getContent();
+                System.out.println(myAgent.getLocalName() + " receive fight proposal from team " + oponentTeam);
+                ACLMessage reply = msg.createReply();
+                // akceptuj jesli propozycja z przeciwnej druzyny
+                if (!oponentTeam.equals(team) && mode == Mode.WAITING_FOR_FIGHT) {
+                    reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                    reply.setContent(team);
                 } else {
-                    // zawodnik z tej samej druzyny lub wlasnie walczy
                     reply.setPerformative(ACLMessage.REFUSE);
-                    reply.setContent("not-available");
+                    reply.setContent("same-team");
                 }
                 myAgent.send(reply);
-            } 
-            else if (msgPropose != null) {
-                System.out.println("propose");
             } else {
                 block();
             }
         }
     }
 
+    private class AtackPerformer extends TickerBehaviour {
+        
+        AID oponent;
+        List<Skill> atackSkills = Arrays.asList(Skill.ATACK_BOXING, Skill.ATACK_KICKING);
+
+        public AtackPerformer(Agent a, long period, AID op) {
+            super(a, period);
+            oponent = op;
+        }
+
+        @Override
+        protected void onTick() {    
+            try {
+                // losowy sklill
+                Skill skill = atackSkills.get(randomizer.nextInt(atackSkills.size() - 1));
+                // losowa jego sila z przedzialu 0 (mogl nie trafic :)) do max skill level
+                Integer value = randomizer.nextInt(skills.get(skill));
+
+                // wysylamy cios do przeciwnika
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                msg.setConversationId("blow");
+                msg.setContentObject(new BlowObject(skill, value));
+                msg.setReplyWith("blow" + System.currentTimeMillis()); //unikalna wartosc
+                msg.addReceiver(oponent);
+
+                send(msg);       
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        } 
+    }
+    
+    private class AtackReceiveService extends CyclicBehaviour {
+
+        MessageTemplate mt = MessageTemplate.MatchConversationId("blow");
+        
+        @Override
+        public void action() {
+            if (mode == Mode.FIGHTING || mode == Mode.WAITING_FOR_FIGHT) {
+                try {
+                    ACLMessage reply = myAgent.receive(mt);
+                      if (reply != null) {
+                        // dostal w pape
+                        if (reply.getPerformative() == ACLMessage.INFORM) {
+                            BlowObject oponentBlow = (BlowObject) reply.getContentObject();
+                            blowFromOponent(oponentBlow.getSkill(), oponentBlow.getSkillValue(), reply.getSender());
+                        }
+                    } else {
+                        block();
+                    }
+                }
+                catch (UnreadableException e) {
+                    e.printStackTrace();
+                }
+            }
+            else {
+                block();
+            }
+        }
+        
+    }
 }
