@@ -45,10 +45,9 @@ public class FighterAgentGui extends JFrame {
      */
     Map<FighterAgent.Skill, JSpinner> skillElementMap = new HashMap<>();
 
-    public FighterAgentGui(FighterAgent a) {
+    public FighterAgentGui(FighterAgent a, Map<FighterAgent.Skill, Integer> initialSkill) {
         super();
         agent = a;
-
         initComponents();
 
         // wypelnienie mapy        
@@ -60,10 +59,11 @@ public class FighterAgentGui extends JFrame {
         skillElementMap.put(FighterAgent.Skill.DEFENSE_BOXING, defenseBoxingSpinner);
         skillElementMap.put(FighterAgent.Skill.DEFENSE_KICKING, defenseKickingSpinner);
         skillElementMap.put(FighterAgent.Skill.DEFENSE_RUNNING_SPEED, defenseRunningSpinner);
-
-        for (JSpinner spinner : skillElementMap.values()) {
+        
+        for (FighterAgent.Skill skill : skillElementMap.keySet()) {
+            JSpinner spinner = skillElementMap.get(skill);
+            spinner.setValue(initialSkill.get(skill));
             spinner.addChangeListener(new ChangeListener() {
-
                 @Override
                 public void stateChanged(ChangeEvent ce) {
                     skillSpinnerHasChanged((JSpinner) ce.getSource());
@@ -77,9 +77,8 @@ public class FighterAgentGui extends JFrame {
                 agent.doDelete();
             }
         });
-
-        setResizable(false);
-        randomSkills();
+        
+        setResizable(false);        
     }
 
     private void randomSkills() {
@@ -146,13 +145,13 @@ public class FighterAgentGui extends JFrame {
 
         controls.add(generateRandomButton);
         controls.add(startFightButton);
-
     }
 
     private void skillSpinnerHasChanged(JSpinner sender) {
         for (FighterAgent.Skill skill : skillElementMap.keySet()) {
             if (skillElementMap.get(skill).equals(sender)) {
-                agent.setSkill(skill, (int)sender.getValue());
+                System.out.println(agent.getLocalName()+ " " + skill.name() + " " + Integer.parseInt(sender.getValue().toString()));
+                agent.setSkill(skill, Integer.parseInt(sender.getValue().toString()));
                 break;
             }
         }
@@ -166,7 +165,7 @@ public class FighterAgentGui extends JFrame {
         agent.findSomeoneToFight();
     }
 
-    public void showGui() {
+    public void showGui() {        
         pack();
         super.setVisible(true);
     }
