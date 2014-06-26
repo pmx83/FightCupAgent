@@ -8,7 +8,6 @@ package fightcup;
 import fightcup.gui.FighterAgentGui;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
@@ -34,15 +33,13 @@ import java.util.Random;
 public class FighterAgent extends Agent {
 
     public enum Mode {
-
         FIGHTING,
-        RUNING_AWAY,
         WAITING_FOR_FIGHT,
-        SEARCHING_OPONENTS
+        SEARCHING_OPONENTS,
+        DEAD
     }
 
     public enum Skill {
-
         ATACK_KICKING,
         ATACK_BOXING,
         ATACK_RUNNING_SPEED,
@@ -72,9 +69,14 @@ public class FighterAgent extends Agent {
     FighterAgentGui gui;
 
     /**
-     * Zdrowie zawodnika, inicjalnie 100%
+     * Zdrowie zawodnika w jednostkach
      */
-    int health = 100;
+    int health;
+    
+    /**
+     * Poziom zdrowia zawodnika podczas ostatniego wolania pomocy
+     */
+    int lastHelpAskHealthValue = 0;
 
     /**
      * Tryb w jakim aktualnie znajduje sie zawodnik
@@ -96,6 +98,17 @@ public class FighterAgent extends Agent {
 
     public void setMode(Mode m) {
         mode = m;
+    }
+    
+    /**
+     * Zdrowie zawodnika na starcie, wyliczane na podstawie jego zdolnosci obrony
+     * @return int
+     */
+    private int getStartupHealth() {
+        int h = getSkill(Skill.DEFENSE_BOXING);
+            h+= getSkill(Skill.DEFENSE_KICKING);
+            h+= getSkill(Skill.DEFENSE_RUNNING_SPEED);
+        return h * 10;
     }
 
     /**
@@ -142,6 +155,28 @@ public class FighterAgent extends Agent {
      * @param blowStrength
      */
     public void blowFromOponent(Skill oponentSkill, int blowStrength, AID oponent) {
+        /**
+         * Moc ciosu przeciwnika jest wyliczana jako roznica między jego siła obrony a siła ciosu przeciwnika
+         * Nie moze byc mniejsza niz 1 - zakladamy ze kazdy cios oslabia
+         */
+        int myDefenseSkillValue;
+        if (oponentSkill == Skill.ATACK_BOXING) {
+            myDefenseSkillValue = getSkill(Skill.DEFENSE_BOXING);
+        }
+        else if (oponentSkill == Skill.ATACK_KICKING) {
+            myDefenseSkillValue = getSkill(Skill.DEFENSE_KICKING);
+        }
+        else {
+            myDefenseSkillValue = 0;
+        }
+        
+        blowStrength -= myDefenseSkillValue;
+        // cios byl slabszy niz ochrona przed nim
+        if (blowStrength < 1) {
+            blowStrength = 1;
+        }
+        updateHealth(blowStrength * -1);
+        
         // fighter nigdy nie jest ciamajda, jak dostaje cios zaraz zaczyna walke
         if (mode == Mode.WAITING_FOR_FIGHT) {
             // odbija atak
@@ -152,8 +187,57 @@ public class FighterAgent extends Agent {
     
     private void updateHealth(int value) {
         health += value;
-        if (health < 50) {
-            mode = Mode.RUNING_AWAY;
+        if (health / getStartupHealth() < 0.1) {
+            setMode(Mode.DEAD);
+        }
+        /**
+         * Jesli zycie spadnie ponizej 50% zawodnik zaczyna wolac o pomoc,
+         * wysyla komunikat help do swojej druzyny po kazdym spadku zycia o 10%
+         */
+        else if (health / getStartupHealth() < 0.5) {
+            // wartosc skoku zycia o 10%
+            long helpAskStep = Math.round(getStartupHealth() * 0.01);
+            if (lastHelpAskHealthValue == 0 || health + helpAskStep < lastHelpAskHealthValue) {
+                askForHelp();
+            }
+        }
+    }
+    
+    private void askForHelp() {
+        lastHelpAskHealthValue = health;
+        /**
+         * Szukamy ziomkow ktorzy moga pomoc
+         */
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("help"+team);
+        template.addServices(sd);
+        try {
+            DFAgentDescription[] result = DFService.search(this, template);
+            if (result.length > 0) {
+                // wysylamy im komunikat pomocy
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                msg.setConversationId("help"+team);
+                /**
+                 * @TODO
+                 * tutaj trzeba pewnie wyslac swoje wspolrzedne zeby wiedzieli gdzie isc
+                 */
+                //msg.setContentObject();
+                msg.setReplyWith("help"+ team + System.currentTimeMillis()); //unikalna wartosc
+                for (DFAgentDescription result1 : result) {
+                    // samego siebie odrzucamy
+                    if (!result1.getName().equals(FighterAgent.this.getAID())) {                        
+                        msg.addReceiver(result1.getName());
+                    }
+                }
+                send(msg); 
+                
+            } else {
+                System.out.println(getLocalName() + " there was no oponents to fight");
+            }
+
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
         }
     }
 
@@ -171,6 +255,7 @@ public class FighterAgent extends Agent {
 
     @Override
     protected void setup() {
+        health = getStartupHealth();
         gui = new FighterAgentGui(this);
         Object[] args = this.getArguments();
         if (args != null && args.length > 1) {
@@ -191,6 +276,11 @@ public class FighterAgent extends Agent {
             sdBlow.setType("blow");
             sdBlow.setName("JADE-blow");
             dfd.addServices(sdBlow);
+            // rejestracja uslugi pomocy zawodnikom swojej druzyny
+            ServiceDescription sdHelp = new ServiceDescription();
+            sdBlow.setType("help" + team);
+            sdBlow.setName("JADE-help"  +team);
+            dfd.addServices(sdHelp);
 
             try {
                 DFService.register(this, dfd);
@@ -265,7 +355,6 @@ public class FighterAgent extends Agent {
                     break;
             }
         }
-
     }
 
     private class FightRequestService extends CyclicBehaviour {
@@ -356,6 +445,6 @@ public class FighterAgent extends Agent {
                 block();
             }
         }
-        
     }
+    
 }
